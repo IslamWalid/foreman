@@ -21,7 +21,7 @@ type ServiceChecks struct {
     UdpPorts []string
 }
 
-func parseService(serviceMap map[string]any) Service {
+func ParseService(serviceMap map[string]any) Service {
     service := Service{}
     for key, value := range serviceMap {
         switch key {
