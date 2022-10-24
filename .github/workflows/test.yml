@@ -1,0 +1,24 @@
+name: foreman tests
+
+on: [push]
+
+jobs:
+
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: install golang
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: run unit tests
+      run: go test ./*.go
+
+    - name: run integration test
+      run: | 
+        cd test
+        ./integration_test.sh
+
