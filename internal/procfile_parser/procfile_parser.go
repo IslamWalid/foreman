@@ -7,7 +7,6 @@ import (
 
 type Service struct {
     ServiceName string
-    Active bool
     Process *os.Process
     Cmd string
     RunOnce bool

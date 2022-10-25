@@ -17,11 +17,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// checkInterval is period between each check performed for every running service.
 const checkInterval = 500 * time.Millisecond
 
 
+// Foreman provides the main methods used to start and exit services.
 type Foreman struct {
+    // services is a map that maps each service name with its corresponding service type.
     services map[string]parser.Service
+
+    // servicesMutex is a mutex used to safely access the services map.
     servicesMutex sync.Mutex
 }
 
@@ -53,7 +58,9 @@ func New(procfilePath string) (*Foreman, error) {
     return foreman, nil
 }
 
-// Start all the services and resolve their dependencies.
+// Start resolves the dependencies between services.
+// It starts the services in the appropriate order.
+// returns error if dependencies cannot be resoved due to cycles in dependencies.
 func (f *Foreman) Start() error {
     var wg sync.WaitGroup
     depGraph := f.buildDependencyGraph()
@@ -96,7 +103,12 @@ func (f *Foreman) buildDependencyGraph() depgraph.DepGraph {
     return graph
 }
 
+// startService starts the service with the given service name.
+// It associated the service with a goroutine.
+// The goroutine restarts the services whenever it terminates.
+// It associates a checking procedure with the running service.
 func (f *Foreman) startService(serviceName string) {
+    stopCheck := make(chan bool)
     for {
         f.servicesMutex.Lock()
         service := f.services[serviceName]
@@ -108,68 +120,80 @@ func (f *Foreman) startService(serviceName string) {
         	Pgid:    0,
         }
         serviceExec.Start()
-		fmt.Printf("process %s has been started\n", serviceName)
+		fmt.Printf("%s has been started\n", serviceName)
 
         service.Process = serviceExec.Process
-        service.Active = true
 
         f.servicesMutex.Lock()
         f.services[serviceName] = service
         f.servicesMutex.Unlock()
 
-        go f.checker(serviceName)
+        go f.checker(service, stopCheck)
+
         serviceExec.Wait()
-		fmt.Printf("process %s exited with %s\n", serviceName, serviceExec.ProcessState.String())
+        service.Process = nil
+        stopCheck <- true
+
+        f.servicesMutex.Lock()
+        f.services[serviceName] = service
+        f.servicesMutex.Unlock()
+
+		fmt.Printf("%s exited with %s\n", serviceName, serviceExec.ProcessState.String())
+
         if service.RunOnce {
             break
         }
     }
 }
 
-// Perform the checks needed on a specific pid.
-func (f *Foreman) checker(serviceName string) {
-    service := f.services[serviceName]
+// checker runs all needed checking routines for the given services.
+// The checker terminates the services upon any check failure.
+// dependency check, checking command and ports check are always running
+// on the specified service.
+func (f *Foreman) checker(service parser.Service, stopCheck <-chan bool) {
     ticker := time.NewTicker(checkInterval)
+    fmt.Printf("%s checks started\n", service.ServiceName)
     for {
-        <-ticker.C
-
-        err := syscall.Kill(service.Process.Pid, 0)
-        if err != nil {
+        select {
+        case <-stopCheck:
+            fmt.Printf("%s checks stopped\n", service.ServiceName)
             return
-        }
+        case <-ticker.C:
+            err := f.checkDeps(service)
+            if err != nil {
+                syscall.Kill(-service.Process.Pid, syscall.SIGINT)
+                fmt.Printf("checking dependencies for %s failed, services has been restarted\n", service.ServiceName)
+            }
 
-        err = f.checkDeps(serviceName)
-        if err != nil {
-            syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-            fmt.Printf("checking dependencies for %s failed, services has been restarted\n", serviceName)
-        }
+            err = f.checkCmd(service)
+            if err != nil {
+                syscall.Kill(-service.Process.Pid, syscall.SIGINT)
+                fmt.Printf("checking process for %s failed, services has been restarted\n", service.ServiceName)
+            }
 
-        err = f.checkCmd(serviceName)
-        if err != nil {
-            syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-            fmt.Printf("checking process for %s failed, services has been restarted\n", serviceName)
-        }
+            err = f.checkPorts(service, "tcp")
+            if err != nil {
+                syscall.Kill(-service.Process.Pid, syscall.SIGINT)
+                fmt.Printf("checking listening tcp ports for %s failed, services has been restarted\n", service.ServiceName)
+            }
 
-        err = f.checkPorts(serviceName, "tcp")
-        if err != nil {
-            syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-            fmt.Printf("checking listening tcp ports for %s failed, services has been restarted\n", serviceName)
-        }
-
-        err = f.checkPorts(serviceName, "udp")
-        if err != nil {
-            syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-            fmt.Printf("checking listening udp ports for %s failed, services has been restarted\n", serviceName)
+            err = f.checkPorts(service, "udp")
+            if err != nil {
+                syscall.Kill(-service.Process.Pid, syscall.SIGINT)
+                fmt.Printf("checking listening udp ports for %s failed, services has been restarted\n", service.ServiceName)
+            }
         }
     }
 }
 
-func (f *Foreman) checkDeps(serviceName string) error {
-    service := f.services[serviceName]
-
+// checkDeps checks that all the service dependencies are running well.
+func (f *Foreman) checkDeps(service parser.Service) error {
     for _, depName := range service.Deps {
+        f.servicesMutex.Lock()
         depService := f.services[depName]
-        if !depService.Active {
+        f.servicesMutex.Unlock()
+
+        if depService.Process == nil {
             return errors.New("Broken dependency")
         }
     }
@@ -178,8 +202,7 @@ func (f *Foreman) checkDeps(serviceName string) error {
 }
 
 // Perform the command in the checks.
-func (f *Foreman) checkCmd(serviceName string) error {
-    service := f.services[serviceName]
+func (f *Foreman) checkCmd(service parser.Service) error {
     checkExec := exec.Command("bash", "-c", service.Checks.Cmd)
     err := checkExec.Run()
     if err != nil {
@@ -189,9 +212,8 @@ func (f *Foreman) checkCmd(serviceName string) error {
 }
 
 // Checks all ports in the checks.
-func (f *Foreman) checkPorts(serviceName, portType string) error {
+func (f *Foreman) checkPorts(service parser.Service, portType string) error {
     var ports []string
-    service := f.services[serviceName]
     switch portType {
     case "tcp":
         ports = service.Checks.TcpPorts
@@ -214,7 +236,9 @@ func (f *Foreman) checkPorts(serviceName, portType string) error {
 func (f *Foreman) Exit(exitStatus int) {
     f.servicesMutex.Lock()
     for _, service := range f.services {
-        syscall.Kill(-service.Process.Pid, syscall.SIGINT)
+        if service.Process != nil {
+            syscall.Kill(-service.Process.Pid, syscall.SIGINT)
+        }
     }
     f.servicesMutex.Unlock()
     os.Exit(exitStatus)
