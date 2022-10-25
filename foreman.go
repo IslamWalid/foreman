@@ -201,7 +201,7 @@ func (f *Foreman) checkDeps(service parser.Service) error {
     return nil
 }
 
-// Perform the command in the checks.
+// Perform the command in the checks for the given service.
 func (f *Foreman) checkCmd(service parser.Service) error {
     checkExec := exec.Command("bash", "-c", service.Checks.Cmd)
     err := checkExec.Run()
@@ -233,6 +233,8 @@ func (f *Foreman) checkPorts(service parser.Service, portType string) error {
     return nil
 }
 
+// ُExit kills all the running services and checkrs.
+// exits foreman with the given exit status.
 func (f *Foreman) Exit(exitStatus int) {
     f.servicesMutex.Lock()
     for _, service := range f.services {
