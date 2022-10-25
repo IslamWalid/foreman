@@ -1,15 +1,23 @@
 package depgraph
 
 const (
+    // notVisited marks the vertices that is not visited yet.
     notVisited vertixStatus = 0
+
+    // currentlyVisiting marks the vertices that is currently being visited.
     currentlyVisiting vertixStatus = 1
+
+    // visited marks the vertices that has been already visited.
     visited vertixStatus = 2
 )
 
+// vertixStatus represents the current status of a vertix.
 type vertixStatus int
+
+// DepGraph represents the graph of the services and their dependenis.
 type DepGraph map[string][]string
 
-// Check if graph is cyclic.
+// IsCyclic check if the graph has cycles.
 func (g DepGraph) IsCyclic() bool {
     cyclic := false
     state := make(map[string]vertixStatus)
@@ -39,7 +47,7 @@ func (g DepGraph) IsCyclic() bool {
     return cyclic
 }
 
-// Topologically sort the dependency graph.
+// TopSort topologically sort the dependency graph.
 func (g DepGraph) TopSort() []string {
     out := make([]string, 0)
     state := make(map[string]vertixStatus)
