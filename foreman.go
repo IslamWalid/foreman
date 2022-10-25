@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/IslamWalid/foreman/internal/depgraph"
-	parser "github.com/IslamWalid/foreman/internal/procfile_parser"
+	parser "github.com/IslamWalid/foreman/internal/procmap_parser"
 	"gopkg.in/yaml.v3"
 )
 

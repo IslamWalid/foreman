@@ -1,4 +1,4 @@
-package procfile_parser
+package procmap_parser
 
 import (
 	"fmt"
