@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	parser "github.com/IslamWalid/foreman/internal/procmap_parser"
+	parser "github.com/IslamWalid/foreman/internal/procparser"
 )
 
 const testProcfile = "./test-procfiles/Procfile-test"
