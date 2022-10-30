@@ -42,7 +42,7 @@ go get github.com/IslamWalid/foreman
 ## Usage and Installation
 - Install foreman
 ```sh
-go install github.com/IslamWalid/foreman/cmd/forman@latest
+go install github.com/IslamWalid/foreman/cmd/foreman@latest
 ```
 - Create the procfile with processes or services you want to run.
 
