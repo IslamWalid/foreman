@@ -25,13 +25,13 @@ redis:
 ```
 **Here** we defined two services `app` and `redis` with check commands and dependency matrix
 
-## API
-- To Get the package:
+## How to use the package
+- **Get the package:**
 ```sh
 go get github.com/IslamWalid/foreman
 ```
 
-- Functionality:
+- **Package API:**
 
 | Function | Description |
 |----------|-------------|
