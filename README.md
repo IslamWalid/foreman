@@ -30,7 +30,9 @@ redis:
 ```sh
 go get github.com/IslamWalid/foreman
 ```
+
 - Functionality:
+
 | Function | Description |
 |----------|-------------|
 | `func New(procfilePath string) (*Foreman, error)` | Parses the given procfile in the procfilePath, builds and return a new foreman object. |
