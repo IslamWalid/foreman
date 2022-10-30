@@ -33,10 +33,13 @@ redis:
 | `func (f *Foreman) Exit(exitStatus int)` | Kill all the running services and their checkers, then exits the program with the given exit status. |
 
 ## How to use
-**First:** add the procfile with processes or services you want to run.
-
-**second**: run with command: 
+- Install foreman
 ```sh
-cd cmd
-go run ./main.go
+go install github.com/IslamWalid/foreman/cmd/forman@latest
+```
+- Create the procfile with processes or services you want to run.
+
+- Pass the procfile path as an argument to foreman: 
+```sh
+foreman /path/to/procfile
 ```
