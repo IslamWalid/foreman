@@ -39,7 +39,7 @@ go get github.com/IslamWalid/foreman
 | `func (f *Foreman) Start() error` | Starts the services parsed from the procfile. |
 | `func (f *Foreman) Exit(exitStatus int)` | Kill all the running services and their checkers, then exits the program with the given exit status. |
 
-## How to use
+## Usage and Installation
 - Install foreman
 ```sh
 go install github.com/IslamWalid/foreman/cmd/forman@latest
