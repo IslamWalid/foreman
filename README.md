@@ -26,6 +26,11 @@ redis:
 **Here** we defined two services `app` and `redis` with check commands and dependency matrix
 
 ## Package API
+- To Get the package:
+```sh
+go get github.com/IslamWalid/foreman
+```
+
 | Function | Description |
 |----------|-------------|
 | `func New(procfilePath string) (*Foreman, error)` | Parses the given procfile in the procfilePath, builds and return a new foreman object. |
