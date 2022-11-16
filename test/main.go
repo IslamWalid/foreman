@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	foreman, err := foreman.New("./Procfile")
+	foreman, err := foreman.New("./Procfile", false)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

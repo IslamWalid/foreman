@@ -9,10 +9,11 @@ import (
 )
 
 func main() {
+	verbosePtr := flag.Bool("v", false, "run the program verbosely")
 	procfilePtr := flag.String("f", "Procfile", "specify the procfile path")
 	flag.Parse()
 
-	foreman, err := foreman.New(*procfilePtr)
+	foreman, err := foreman.New(*procfilePtr, *verbosePtr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

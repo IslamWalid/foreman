@@ -53,5 +53,7 @@ foreman
 
 - Or pass a custom procfile path.
 ```sh
-foreman -f /path/to/procfile
+foreman -f <path_to_procfile>
 ```
+
+- Use `-v` flag to run the program verbosely.

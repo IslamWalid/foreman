@@ -3,6 +3,8 @@ package foreman
 import (
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -27,14 +29,23 @@ type Foreman struct {
 
 	// servicesMutex is a mutex used to safely access the services map.
 	servicesMutex sync.Mutex
+
+	// logger is used to print log messages to stdout.
+	logger *log.Logger
 }
 
 // Parse and create a new foreman object.
 // it returns error if the file path is wrong or not in yml format.
-func New(procfilePath string) (*Foreman, error) {
+func New(procfilePath string, verbose bool) (*Foreman, error) {
+	logger, err := openLogger(verbose)
+	if err != nil {
+		return nil, err
+	}
+
 	foreman := &Foreman{
 		services:      make(map[string]parser.Service),
 		servicesMutex: sync.Mutex{},
+		logger:        logger,
 	}
 
 	procfileData, err := os.ReadFile(procfilePath)
@@ -55,6 +66,24 @@ func New(procfilePath string) (*Foreman, error) {
 	}
 
 	return foreman, nil
+}
+
+// openLogger creates a logger for foreman verbose messages.
+func openLogger(verbose bool) (*log.Logger, error) {
+	var vout io.Writer
+	if !verbose {
+		dnull, err := os.Create(os.DevNull)
+		if err != nil {
+			return nil, err
+		}
+		vout = dnull
+	} else {
+		vout = os.Stdout
+	}
+
+	logger := log.New(vout, "INFO: ", log.Ldate|log.Ltime)
+
+	return logger, nil
 }
 
 // Start resolves the dependencies between services.
@@ -119,7 +148,7 @@ func (f *Foreman) startService(serviceName string) {
 			Pgid:    0,
 		}
 		serviceExec.Start()
-		fmt.Printf("%s has been started\n", serviceName)
+		f.logger.Printf("%s has been started\n", serviceName)
 
 		service.Process = serviceExec.Process
 
@@ -137,7 +166,7 @@ func (f *Foreman) startService(serviceName string) {
 		f.services[serviceName] = service
 		f.servicesMutex.Unlock()
 
-		fmt.Printf("%s exited with %s\n", serviceName, serviceExec.ProcessState.String())
+		f.logger.Printf("%s exited with %s\n", serviceName, serviceExec.ProcessState.String())
 
 		if service.RunOnce {
 			break
@@ -151,35 +180,35 @@ func (f *Foreman) startService(serviceName string) {
 // on the specified service.
 func (f *Foreman) checker(service parser.Service, stopCheck <-chan bool) {
 	ticker := time.NewTicker(checkInterval)
-	fmt.Printf("%s checks started\n", service.ServiceName)
+	f.logger.Printf("%s checks started\n", service.ServiceName)
 	for {
 		select {
 		case <-stopCheck:
-			fmt.Printf("%s checks stopped\n", service.ServiceName)
+			f.logger.Printf("%s checks stopped\n", service.ServiceName)
 			return
 		case <-ticker.C:
 			err := f.checkDeps(service)
 			if err != nil {
 				syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-				fmt.Printf("checking dependencies for %s failed, services has been restarted\n", service.ServiceName)
+				f.logger.Printf("checking dependencies for %s failed, services has been restarted\n", service.ServiceName)
 			}
 
 			err = f.checkCmd(service)
 			if err != nil {
 				syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-				fmt.Printf("checking process for %s failed, services has been restarted\n", service.ServiceName)
+				f.logger.Printf("checking process for %s failed, services has been restarted\n", service.ServiceName)
 			}
 
 			err = f.checkPorts(service, "tcp")
 			if err != nil {
 				syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-				fmt.Printf("checking listening tcp ports for %s failed, services has been restarted\n", service.ServiceName)
+				f.logger.Printf("checking listening tcp ports for %s failed, services has been restarted\n", service.ServiceName)
 			}
 
 			err = f.checkPorts(service, "udp")
 			if err != nil {
 				syscall.Kill(-service.Process.Pid, syscall.SIGINT)
-				fmt.Printf("checking listening udp ports for %s failed, services has been restarted\n", service.ServiceName)
+				f.logger.Printf("checking listening udp ports for %s failed, services has been restarted\n", service.ServiceName)
 			}
 		}
 	}

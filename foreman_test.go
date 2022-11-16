@@ -42,27 +42,27 @@ func TestNew(t *testing.T) {
 		}
 		want.services["hello"] = hello
 
-		got, _ := New(testProcfile)
+		got, _ := New(testProcfile, false)
 
 		assertForeman(t, got, &want)
 	})
 
 	t.Run("Run existing file with bad yml syntax", func(t *testing.T) {
-		_, err := New(testBadProcfile)
+		_, err := New(testBadProcfile, false)
 		if err == nil {
 			t.Error("Expcted error: yaml: unmarshal errors")
 		}
 	})
 
 	t.Run("Run non-existing file", func(t *testing.T) {
-		_, err := New("uknown_file")
+		_, err := New("uknown_file", false)
 		want := "open uknown_file: no such file or directory"
 		assertError(t, err, want)
 	})
 }
 
 func TestBuildDependencyGraph(t *testing.T) {
-	foreman, _ := New(testProcfile)
+	foreman, _ := New(testProcfile, false)
 
 	got := foreman.buildDependencyGraph()
 	want := make(map[string][]string)
@@ -73,7 +73,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 func TestIsCyclic(t *testing.T) {
 	t.Run("run cyclic graph", func(t *testing.T) {
-		foreman, _ := New(testCyclicProcfile)
+		foreman, _ := New(testCyclicProcfile, false)
 		graph := foreman.buildDependencyGraph()
 		got := graph.IsCyclic()
 		if !got {
@@ -82,7 +82,7 @@ func TestIsCyclic(t *testing.T) {
 	})
 
 	t.Run("run acyclic graph", func(t *testing.T) {
-		foreman, _ := New(testProcfile)
+		foreman, _ := New(testProcfile, false)
 		graph := foreman.buildDependencyGraph()
 		got := graph.IsCyclic()
 		if got {
@@ -92,7 +92,7 @@ func TestIsCyclic(t *testing.T) {
 }
 
 func TestTopSort(t *testing.T) {
-	foreman, _ := New(testProcfile)
+	foreman, _ := New(testProcfile, false)
 	depGraph := foreman.buildDependencyGraph()
 	got := depGraph.TopSort()
 	assertTopSortResult(t, foreman, got)
