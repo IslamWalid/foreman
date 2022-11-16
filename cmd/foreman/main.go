@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,12 +9,10 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "too few arguments: specify the procile path")
-		os.Exit(1)
-	}
+	procfilePtr := flag.String("f", "Procfile", "specify the procfile path")
+	flag.Parse()
 
-	foreman, err := foreman.New(os.Args[1])
+	foreman, err := foreman.New(*procfilePtr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

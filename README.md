@@ -46,7 +46,12 @@ go install github.com/IslamWalid/foreman/cmd/foreman@latest
 ```
 - Create the procfile with processes or services you want to run.
 
-- Pass the procfile path as an argument to foreman: 
+- Run `./Procfile` in the current directory.
 ```sh
-foreman /path/to/procfile
+foreman
+```
+
+- Or pass a custom procfile path.
+```sh
+foreman -f /path/to/procfile
 ```
